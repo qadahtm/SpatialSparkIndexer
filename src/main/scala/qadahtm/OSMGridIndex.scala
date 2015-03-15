@@ -1,3 +1,16 @@
+/*
+   Copyright 2015 - Thamir Qadah
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+       http://www.apache.org/licenses/LICENSE-2.0
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ */
+
 package qadahtm
 
 import org.apache.spark.SparkConf
@@ -27,82 +40,27 @@ object OSMGridIndex {
     val minPartitions = args(3).toInt
     val finalParitions = args(4).toInt
     
-    
-    
-    
+    val indexbuilder = new SparkIndexBuilder(input_datafile,out_dir,lat_range,minPartitions,finalParitions, tigerDSParseFunction(_))
     
     val sparkConf = new SparkConf().setAppName("GridIndex")
     val sc = new SparkContext(sparkConf)
     
+    indexbuilder.build(sc)
     
-    
-    val index = buildEmptyGridIndex(lat_range)    
-    val partitions = Array.ofDim[RDD[(Cell,String)]](index.length*index.length)
-    
-    
-    val data = sc.textFile(input_datafile, minPartitions)
-    
-    val paired = data.flatMap { x =>
-      {
-        try {
-           val vals = x.split(",")
-            val lat = vals(13).toDouble
-            val lng = vals(14).toDouble
-            // find cell in index
-            
-            findBucket(lat,lng,lat_range) match {
-              case (Some(i),Some(j)) =>  {
-                Some(new Cell(i,j,lat_range),x)
-              }
-              case _ => None
-            }     
-          
-        } catch {
-          case _:NumberFormatException => {
-            // ignode maliformed input
-            None   
-          }
-        }  
-      }
-    } 
-    
-    val cells = scala.collection.mutable.HashMap[String,RDD[String]]()
-    
-    for (i <- 0 to index.length-1){      
-      for (j <- 0 to index.length-1){
-        
-        val cellrdd = paired.flatMap{
-          case (c,s) => {
-            if (c.i == i && c.j == j) {
-              Some(s)
-            }
-            else None
-          }
-          case _ => None
-        }
-        
-        val (lat_min,lat_max,lng_min,lng_max) = getMBR(i, j, lat_range)
-        val name = s"cell-[$lat_min]-[$lat_max]-[$lng_min]-[$lng_max]"
-        //println(name)
-        cells.put(name, cellrdd)        
-      }
-    }
-    
-    cells.foreach(c => {
-      val cname = c._1
-      val crdd = c._2     
-      
-      println(cname+" has "+crdd.count()+" spatial objects")
-      val rep_crdd = crdd.coalesce(finalParitions)
-      rep_crdd.saveAsTextFile(out_dir+"-"+lat_range+"/"+cname)
-    })
-    
-    
-    println("finished building the index for "+input_datafile)    
     sc.stop()
-    
 
   }
+  
+  def tigerDSParseFunction(line:String) : (Double,Double) ={
+    val vals = line.split(",")
+    val lat = vals(13).toDouble
+    val lng = vals(14).toDouble           
+    (lat,lng)
+  }
+  
+}
+
+abstract class GridIndexBuilder {
   
   def getCS() : (Double,Double,Double,Double) = {
     val (lat_min, lat_max) = (-90.0, 90.0)
@@ -218,15 +176,99 @@ object OSMGridIndex {
     }
     return res;
   }
+  
+}
+
+/**
+ *  val input_datafile = args(0)
+    val out_dir = args(1)
+    val lat_range = args(2).toInt
+    val minPartitions = args(3).toInt
+    val finalParitions = args(4).toInt
+ */
+class SparkIndexBuilder(input_datafile:String,
+                        out_dir:String,
+                        lat_range:Int,
+                        minPartitions:Int,
+                        finalPartitions:Int,
+                        lineParseFunc: String => (Double,Double)) extends GridIndexBuilder with Serializable{
+  
+  def build(sc:SparkContext) : Unit = {
+    
+   
+    val index = buildEmptyGridIndex(lat_range)    
+    val partitions = Array.ofDim[RDD[(Cell,String)]](index.length*index.length)
+    
+    
+    val data = sc.textFile(input_datafile, minPartitions)
+    
+    val paired = data.flatMap { line =>
+      {
+        try {
+          val (lat,lng) = lineParseFunc(line)
+            // find cell in index
+            
+            findBucket(lat,lng,lat_range) match {
+              case (Some(i),Some(j)) =>  {
+                Some(new Cell(i,j,lat_range),line)
+              }
+              case _ => None
+            }     
+          
+        } catch {
+          case _:NumberFormatException => {
+            // ignore maliformed input
+            None   
+          }
+        }  
+      }
+    } 
+    
+    val cells = scala.collection.mutable.HashMap[String,RDD[String]]()
+    
+    for (i <- 0 to index.length-1){      
+      for (j <- 0 to index.length-1){
+        
+        val cellrdd = paired.flatMap{
+          case (c,s) => {
+            if (c.i == i && c.j == j) {
+              Some(s)
+            }
+            else None
+          }
+          case _ => None
+        }
+        
+        val (lat_min,lat_max,lng_min,lng_max) = getMBR(i, j, lat_range)
+        val name = s"cell-[$lat_min]-[$lat_max]-[$lng_min]-[$lng_max]"
+        //println(name)
+        cells.put(name, cellrdd)        
+      }
+    }
+    
+    cells.foreach(c => {
+      val cname = c._1
+      val crdd = c._2     
+      
+      println(cname+" has "+crdd.count()+" spatial objects")
+      val rep_crdd = crdd.coalesce(finalPartitions)
+      rep_crdd.saveAsTextFile(out_dir+"-"+lat_range+"/"+cname)
+    })
+    
+    
+    println("finished building the index for "+input_datafile)    
+    
+  }
+  
 }
 
 
-object OSMGridIndexTest {
+object OSMGridIndexTest extends GridIndexBuilder{
   def main(args: Array[String]): Unit = {
     val ntest = args(0).toInt
     val lat_range = args(1).toInt
     
-    OSMGridIndex.testBuildIndex(ntest, lat_range)
+    testBuildIndex(ntest, lat_range)
     
   }
 }
