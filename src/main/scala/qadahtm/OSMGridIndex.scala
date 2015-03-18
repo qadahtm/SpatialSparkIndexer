@@ -207,7 +207,7 @@ abstract class GridIndexBuilder {
 
 object Utils {
   
-  val log = Logger.getLogger(this.getClass.getName)
+  val log = org.apache.log4j.Logger.getLogger(this.getClass.getName)
   
   private val reader = new com.vividsolutions.jts.io.WKTReader()
   private val writer = new com.vividsolutions.jts.io.WKTWriter()
@@ -217,6 +217,7 @@ object Utils {
    */
   
   def readWKT(wkt:String) : Option[Geometry] = {
+    log.info(s"readWKT: $wkt")
     val chars = new java.io.InputStreamReader(new ByteArrayInputStream(wkt.getBytes(StandardCharsets.UTF_8)))
     try{
       val res = reader.read(chars)
@@ -225,8 +226,9 @@ object Utils {
     }
     catch{
       case e:Exception => {
-        log.warning(s"Exception in reading WKT($wkt) : "+e.getMessage)
-        None}
+        log.warn(s"Exception in reading WKT($wkt) : "+e.getMessage)
+        None
+        }
     }
   }
   
@@ -258,7 +260,9 @@ object Utils {
     
     val wkt = line.split("\t")(1)
     readWKT(wkt).flatMap { r => 
-          Some((r.getCentroid.getX,r.getCentroid.getY))}    
+          if (!r.isEmpty()) Some((r.getCentroid.getX,r.getCentroid.getY))
+          else None
+          }    
   }
   
 }
