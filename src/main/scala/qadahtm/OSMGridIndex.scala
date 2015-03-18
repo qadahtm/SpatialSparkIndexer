@@ -387,7 +387,7 @@ object OSMGridIndexTest extends GridIndexBuilder{
 //      println(wkt)
       
       val res = Utils.readWKT(wkt)
-      println("x = "+res.getCentroid.getX+" , y = "+res.getCentroid.getY)
+      if (res.isDefined) println("x = "+res.get.getCentroid.getX+" , y = "+res.get.getCentroid.getY)
       
     } }
   }
