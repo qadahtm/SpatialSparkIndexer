@@ -212,11 +212,16 @@ object Utils {
    * Geotools based functions
    */
   
-  def readWKT(wkt:String) : Geometry = {
+  def readWKT(wkt:String) : Option[Geometry] = {
     val chars = new java.io.InputStreamReader(new ByteArrayInputStream(wkt.getBytes(StandardCharsets.UTF_8)))
+    try{
       val res = reader.read(chars)
       chars.close()
-      res
+      Some(res)      
+    }
+    catch{
+      case _:Exception => {None}
+    }
   }
   
   
@@ -246,10 +251,15 @@ object Utils {
     //println(s"parsing line: $line")
     
     val wkt = line.split("\t")(1)
-    val r = readWKT(wkt)
-    if (r.isEmpty()) None
-    else
-      Some((r.getCentroid.getX,r.getCentroid.getY))
+    val res = readWKT(wkt) match {
+      case Some(r) =>{
+        if (r.isEmpty()) None
+        else
+          Some((r.getCentroid.getX,r.getCentroid.getY))
+      }
+      case _ => {None}
+    }
+    res
   }
   
 }
