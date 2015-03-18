@@ -275,7 +275,8 @@ class SparkIndexBuilder(input_datafile:String,
     val partitions = Array.ofDim[RDD[(Cell,String)]](index.length*index.length)
     
     
-    val data = sc.textFile(input_datafile, minPartitions)
+//    val data = sc.textFile(input_datafile, minPartitions)
+    val data = sc.textFile(input_datafile)
     
     val paired = data.flatMap { line =>
       {
