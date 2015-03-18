@@ -24,6 +24,7 @@ import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import com.vividsolutions.jts.geom.Geometry
 import java.util.logging.Logger
+import com.vividsolutions.jts.io.ParseException
 
 
 case class Cell(i:Int, j:Int, lat_range:Int) extends Equals
@@ -217,18 +218,20 @@ object Utils {
    */
   
   def readWKT(wkt:String) : Option[Geometry] = {
-    log.info(s"readWKT: $wkt")
+    //log.info(s"readWKT: $wkt")
     val chars = new java.io.InputStreamReader(new ByteArrayInputStream(wkt.getBytes(StandardCharsets.UTF_8)))
     try{
       val res = reader.read(chars)
       chars.close()
-      Some(res)      
+      if (res == null) None
+      else
+        Some(res)      
     }
     catch{
       case e:Exception => {
-        log.warn(s"Exception in reading WKT($wkt) : "+e.getMessage)
+        //log.warn(s"Exception in reading WKT($wkt) : "+e.getMessage)
         None
-        }
+        }      
     }
   }
   
@@ -256,7 +259,7 @@ object Utils {
    * OSM datasets are WKT, we need to parse them and find a representative point.
    */
   def osmDSParseFunction(line:String) : Option[(Double,Double)] ={
-    println(s"parsing line: $line")
+    //println(s"parsing line: $line")
     
     val wkt = line.split("\t")(1)
     readWKT(wkt).flatMap { r => 
