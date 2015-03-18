@@ -17,6 +17,12 @@ import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
+import org.apache.commons.math3.util.Precision
+import scala.io.Source
+import java.io.File
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
+import com.vividsolutions.jts.geom.Geometry
 
 
 case class Cell(i:Int, j:Int, lat_range:Int) extends Equals
@@ -25,23 +31,38 @@ object OSMGridIndex {
   
   def main(args: Array[String]): Unit = {
     
-    // syntax, OSMGridIndex <input_datafile> <out-dir> <lat_range> <proc_partitions> <final_partitions>
+    // syntax, OSMGridIndex tiger|osm <input_datafile> <out-dir> <lat_range> <proc_partitions> <final_partitions>
     
-    if (args.length < 5){
-      
-      println("Usage: OSMGridIndex <input_datafile> <out-dir> <lat_range> <proc_partitions> <final_partitions>")
-      exit()
+    if (args.length < 6){
+      printUsage
     }
     
     
-    val input_datafile = args(0)
-    val out_dir = args(1)
-    val lat_range = args(2).toInt
-    val minPartitions = args(3).toInt
-    val finalParitions = args(4).toInt
     
-    val indexbuilder = new SparkIndexBuilder(input_datafile,out_dir,lat_range,minPartitions,finalParitions, tigerDSParseFunction(_))
+    val dataset = args(0)
+    val input_datafile = args(1)
+    val out_dir = args(2)
+    val lat_range = args(3).toInt
+    val minPartitions = args(4).toInt
+    val finalParitions = args(5).toInt
     
+    val indexbuilder : SparkIndexBuilder  = dataset match {
+      case "tiger" => {
+        new SparkIndexBuilder(input_datafile,out_dir,lat_range,
+        minPartitions,finalParitions, Utils.tigerDSParseFunction(_))
+      }
+      case "osm" => {
+        new SparkIndexBuilder(input_datafile,out_dir,lat_range,
+        minPartitions,finalParitions, Utils.osmDSParseFunction(_))
+    
+      } 
+      case _ => {
+        printUsage
+        new SparkIndexBuilder(input_datafile,out_dir,lat_range,
+        minPartitions,finalParitions, zero(_))
+      }
+      
+    }
     val sparkConf = new SparkConf().setAppName("GridIndex")
     val sc = new SparkContext(sparkConf)
     
@@ -51,12 +72,14 @@ object OSMGridIndex {
 
   }
   
-  def tigerDSParseFunction(line:String) : (Double,Double) ={
-    val vals = line.split(",")
-    val lat = vals(13).toDouble
-    val lng = vals(14).toDouble           
-    (lat,lng)
+  def zero(line: String): Option[(Double,Double)] = None
+  
+  def printUsage = {     
+      println(""""Usage: OSMGridIndex tiger|osm <input_datafile> <out-dir> <lat_range>
+                  <proc_partitions> <final_partitions>""")
+      System.exit(0)
   }
+  
   
 }
 
@@ -177,6 +200,58 @@ abstract class GridIndexBuilder {
     return res;
   }
   
+  
+}
+
+object Utils {
+  
+  private val reader = new com.vividsolutions.jts.io.WKTReader()
+  private val writer = new com.vividsolutions.jts.io.WKTWriter()
+  
+  /**
+   * Geotools based functions
+   */
+  
+  def readWKT(wkt:String) : Geometry = {
+    val chars = new java.io.InputStreamReader(new ByteArrayInputStream(wkt.getBytes(StandardCharsets.UTF_8)))
+      val res = reader.read(chars)
+      chars.close()
+      res
+  }
+  
+  
+  /**
+   * Parse functions reads a line of data and finds the representative point of that spatial object
+   */
+  
+  /** 
+   *  Spatial Hadoop's datasets functions
+   */
+  
+  /**
+   * Tiger lines include a point for each spatial object thus this is trivial
+   */
+  def tigerDSParseFunction(line:String) : Option[(Double,Double)] ={
+    val vals = line.split(",")
+    val lat = vals(13).toDouble
+    val lng = vals(14).toDouble           
+    Some((lat,lng))
+  }
+  
+  
+  /**
+   * OSM datasets are WKT, we need to parse them and find a representative point.
+   */
+  def osmDSParseFunction(line:String) : Option[(Double,Double)] ={
+    //println(s"parsing line: $line")
+    
+    val wkt = line.split("\t")(1)
+    val r = readWKT(wkt)
+    if (r.isEmpty()) None
+    else
+      Some((r.getCentroid.getX,r.getCentroid.getY))
+  }
+  
 }
 
 /**
@@ -191,7 +266,7 @@ class SparkIndexBuilder(input_datafile:String,
                         lat_range:Int,
                         minPartitions:Int,
                         finalPartitions:Int,
-                        lineParseFunc: String => (Double,Double)) extends GridIndexBuilder with Serializable{
+                        lineParseFunc: String => Option[(Double,Double)]) extends GridIndexBuilder with Serializable{
   
   def build(sc:SparkContext) : Unit = {
     
@@ -205,15 +280,19 @@ class SparkIndexBuilder(input_datafile:String,
     val paired = data.flatMap { line =>
       {
         try {
-          val (lat,lng) = lineParseFunc(line)
-            // find cell in index
-            
-            findBucket(lat,lng,lat_range) match {
+          
+          lineParseFunc(line).flatMap{
+            case (lat,lng) =>{
+               // find cell in index
+              findBucket(lat,lng,lat_range) match {
               case (Some(i),Some(j)) =>  {
                 Some(new Cell(i,j,lat_range),line)
               }
               case _ => None
-            }     
+              }     
+            }
+            case _ => None
+          }
           
         } catch {
           case _:NumberFormatException => {
@@ -227,7 +306,7 @@ class SparkIndexBuilder(input_datafile:String,
     val cells = scala.collection.mutable.HashMap[String,RDD[String]]()
     
     for (i <- 0 to index.length-1){      
-      for (j <- 0 to index.length-1){
+      for (j <- 0 to index(i).length-1){
         
         val cellrdd = paired.flatMap{
           case (c,s) => {
@@ -262,13 +341,43 @@ class SparkIndexBuilder(input_datafile:String,
   
 }
 
-
 object OSMGridIndexTest extends GridIndexBuilder{
+  
+  
   def main(args: Array[String]): Unit = {
-    val ntest = args(0).toInt
-    val lat_range = args(1).toInt
+   
+    args(0) match {
+      case "index" => {
+        val ntest = args(1).toInt
+        val lat_range = args(2).toInt
+        
+        testBuildIndex(ntest, lat_range)    
+      } 
+      case "wkt" => {
+        
+        val fname = args(1)
+        testWKT(fname)
+        
+      }
+      case _ => {
+        println("error testing")
+      }
+      
+    }
     
-    testBuildIndex(ntest, lat_range)
     
+  }
+  
+  def testWKT(filename:String) = {
+    val file = Source.fromFile(new File(filename))
+    val lines = file.getLines().take(10)
+    lines.foreach { l => {
+      val wkt = l.split("\t")(1)
+//      println(wkt)
+      
+      val res = Utils.readWKT(wkt)
+      println("x = "+res.getCentroid.getX+" , y = "+res.getCentroid.getY)
+      
+    } }
   }
 }
