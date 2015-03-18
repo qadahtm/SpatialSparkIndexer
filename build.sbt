@@ -45,7 +45,7 @@ libraryDependencies ++= Seq(
   "io.spray"           %% "spray-json"       % "1.3.0",
   "org.geotools"        % "gt-main"       % "12.2",
     "org.geotools" % "gt-epsg-hsql" % "12.2",
-    "//org.geotools" % "gt-shapefile" % "12.2",
+    //"org.geotools" % "gt-shapefile" % "12.2",
     //"org.geotools" % "gt-render" % "12.2",
     //"org.geotools" % "gt-xml" %"12.2",
     //"org.geotools" % "gt-geojson" % "12.2",
