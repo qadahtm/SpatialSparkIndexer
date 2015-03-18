@@ -23,6 +23,7 @@ import java.io.File
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import com.vividsolutions.jts.geom.Geometry
+import java.util.logging.Logger
 
 
 case class Cell(i:Int, j:Int, lat_range:Int) extends Equals
@@ -185,7 +186,8 @@ abstract class GridIndexBuilder {
   def findBucket1D(scales: Array[Double], value:Double): Option[Int] = {
     if (value < scales(0)) return None
     if (value > scales(scales.length-1)) return None
-    for (i <- 0 to scales.length){
+    for (i <- 0 to scales.length-1){
+      if (i == scales.length-1 && scales(i) <= value) return Some(i)
       if (scales(i) <= value && scales(i+1) > value) return Some(i)
     }
     return None
@@ -205,6 +207,8 @@ abstract class GridIndexBuilder {
 
 object Utils {
   
+  val log = Logger.getLogger(this.getClass.getName)
+  
   private val reader = new com.vividsolutions.jts.io.WKTReader()
   private val writer = new com.vividsolutions.jts.io.WKTWriter()
   
@@ -220,7 +224,9 @@ object Utils {
       Some(res)      
     }
     catch{
-      case _:Exception => {None}
+      case e:Exception => {
+        log.warning(s"Exception in reading WKT($wkt) : "+e.getMessage)
+        None}
     }
   }
   
@@ -248,18 +254,11 @@ object Utils {
    * OSM datasets are WKT, we need to parse them and find a representative point.
    */
   def osmDSParseFunction(line:String) : Option[(Double,Double)] ={
-    //println(s"parsing line: $line")
+    println(s"parsing line: $line")
     
     val wkt = line.split("\t")(1)
-    val res = readWKT(wkt) match {
-      case Some(r) =>{
-        if (r.isEmpty()) None
-        else
-          Some((r.getCentroid.getX,r.getCentroid.getY))
-      }
-      case _ => {None}
-    }
-    res
+    readWKT(wkt).flatMap { r => 
+          Some((r.getCentroid.getX,r.getCentroid.getY))}    
   }
   
 }
