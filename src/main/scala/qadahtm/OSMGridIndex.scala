@@ -292,7 +292,7 @@ class SparkIndexBuilder(input_datafile:String,
     
     
 //    val data = sc.textFile(input_datafile, minPartitions)
-    val data = sc.textFile(input_datafile)
+    val data = sc.textFile(input_datafile).cache()
     
     val paired = data.flatMap { line =>
       {
@@ -318,7 +318,7 @@ class SparkIndexBuilder(input_datafile:String,
           }
         }  
       }
-    } 
+    }.cache() 
     
     val cells = scala.collection.mutable.HashMap[String,RDD[String]]()
     
@@ -336,18 +336,19 @@ class SparkIndexBuilder(input_datafile:String,
         }
         
         val (lat_min,lat_max,lng_min,lng_max) = getMBR(i, j, lat_range)
-        val name = s"cell-[$lat_min]-[$lat_max]-[$lng_min]-[$lng_max]"
+//        val name = s"cell-[$lat_min]-[$lat_max]-[$lng_min]-[$lng_max]"
+        val name = "cell_"+lat_min+"_"+lat_max+"_"+lng_min+"_"+lng_max
         //println(name)
         cells.put(name, cellrdd)        
       }
     }
     
-    cells.foreach(c => {
+    cells.map(c => {
       val cname = c._1
       val crdd = c._2     
       
-      println(cname+" has "+crdd.count()+" spatial objects")
-      val rep_crdd = crdd.coalesce(finalPartitions)
+      val rep_crdd = crdd.coalesce(finalPartitions,shuffle=true).cache()
+      println(cname+" has "+rep_crdd.count()+" spatial objects")
       rep_crdd.saveAsTextFile(out_dir+"-"+lat_range+"/"+cname)
     })
     

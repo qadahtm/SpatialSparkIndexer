@@ -1,7 +1,0 @@
-package qadahtm
-
-object SparkBuildGridIndex {
-  
-  
-
-}
