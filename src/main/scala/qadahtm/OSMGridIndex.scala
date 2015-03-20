@@ -29,6 +29,19 @@ import com.vividsolutions.jts.io.ParseException
 
 case class Cell(i:Int, j:Int, lat_range:Int) extends Equals
 
+object OSMGridIndexRead {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setAppName("GridIndex")
+    val sc = new SparkContext(sparkConf)
+    
+     //Read Path
+    val index_path = args(0)
+    
+    
+    sc.stop()
+  }  
+}
+
 object OSMGridIndex {
   
   def main(args: Array[String]): Unit = {
@@ -36,7 +49,7 @@ object OSMGridIndex {
     // syntax, OSMGridIndex tiger|osm <input_datafile> <out-dir> <lat_range> <proc_partitions> <final_partitions>
     
     if (args.length < 6){
-      printUsage
+      printUsage()
     }
     
     
@@ -76,7 +89,7 @@ object OSMGridIndex {
   
   def zero(line: String): Option[(Double,Double)] = None
   
-  def printUsage = {     
+  def printUsage() = {     
       println(""""Usage: OSMGridIndex tiger|osm <input_datafile> <out-dir> <lat_range>
                   <proc_partitions> <final_partitions>""")
       System.exit(0)
@@ -348,8 +361,8 @@ class SparkIndexBuilder(input_datafile:String,
       val crdd = c._2     
       
       val rep_crdd = crdd.coalesce(finalPartitions,shuffle=true).cache()
-      println(cname+" has "+rep_crdd.count()+" spatial objects")
       rep_crdd.saveAsTextFile(out_dir+"-"+lat_range+"/"+cname)
+      println(cname+" has "+rep_crdd.count()+" spatial objects")
     })
     
     
