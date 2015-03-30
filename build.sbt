@@ -12,6 +12,8 @@ seq(
         packMain := Map(
         "OSMPBFExtractor" -> "qadahtm.OSMPBFExtractor"
         ,"OSMGridIndex" -> "qadahtm.OSMGridIndex"
+        ,"Tareeg" -> "qadahtm.Tareeg"
+        ,"OSMXMLProcessor" -> "qadahtm.OSMXMLProcessor"
         ,"OSMGridIndexTest" -> "qadahtm.OSMGridIndexTest"
 	),
         // [Optional] (Generate .bat files for Windows. The default value is true)
