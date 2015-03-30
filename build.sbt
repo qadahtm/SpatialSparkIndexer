@@ -14,6 +14,7 @@ seq(
         ,"OSMGridIndex" -> "qadahtm.OSMGridIndex"
         ,"Tareeg" -> "qadahtm.Tareeg"
         ,"OSMXMLProcessor" -> "qadahtm.OSMXMLProcessor"
+        ,"TwitterSpatialFilter" -> "qadahtm.TwitterSpatialFilter"
         ,"OSMGridIndexTest" -> "qadahtm.OSMGridIndexTest"
 	),
         // [Optional] (Generate .bat files for Windows. The default value is true)

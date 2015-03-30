@@ -8,6 +8,7 @@ object TwitterSpatialFilter {
   
   // Indy : http://api.openstreetmap.org/api/0.6/map?bbox=-86.3416,39.6723,-86.0126,39.9398
   // Chicago : http://api.openstreetmap.org/api/0.6/map?bbox=-87.9013,41.781,-87.527,41.9449
+  // /api/0.6/map?bbox=left,bottom,right,top
   case class BBox(left:Double, bottom:Double, right:Double, top:Double){
     def overlaps2D(that:BBox): Boolean = {
       (overlaps1D(left, right, that.left, that.right) && overlaps1D(bottom, top, that.bottom, that.top))
@@ -40,15 +41,17 @@ object TwitterSpatialFilter {
     
     val in_path = args(1)
     val out_path = args(1)+".filtered."+args(0)
-    val out = new PrintWriter(new File(out_path))
+    val out = new PrintWriter(new File(out_path), "UTF-8")
     
     
     // [tweet_id], [created_at], [geo_lat], [geo_long], [user_id], [tweet_text]
-    val tweets = Source.fromFile(in_path).getLines()
+    val tweets = Source.fromFile(in_path,"UTF8").getLines()
     
     tweets.foreach { line => {
       val tarr = line.split(",")
-      if (bbox.contains(tarr(2).toDouble, tarr(3).toDouble)) out.println(line)
+      if (tarr.length == 6){
+        if (bbox.contains(tarr(2).toDouble, tarr(3).toDouble)) out.println(line)
+      }      
     } }
     
   }
