@@ -14,6 +14,7 @@ seq(
         ,"OSMGridIndex" -> "qadahtm.OSMGridIndex"
         ,"Tareeg" -> "qadahtm.Tareeg"
         ,"OSMXMLProcessor" -> "qadahtm.OSMXMLProcessor"
+        ,"OSMGPXProcessor" -> "qadahtm.OSMGPXProcessor"
         ,"TwitterSpatialFilter" -> "qadahtm.TwitterSpatialFilter"
         ,"OSMGridIndexTest" -> "qadahtm.OSMGridIndexTest"
 	),

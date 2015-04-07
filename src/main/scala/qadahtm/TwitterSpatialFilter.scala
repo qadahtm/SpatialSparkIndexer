@@ -30,29 +30,41 @@ object TwitterSpatialFilter {
     
   }
   def main(args:Array[String]): Unit ={
-    val bbox = args(0) match {
-      case "chicago" => {
-        BBox(-87.9013,41.781,-87.527,41.9449)        
-      }
-      case "indy" => {
-        BBox(-86.3416,39.6723,-86.0126,39.9398)
-      }
+//    val bbox = args(0) match {
+//      case "chicago" => {
+//        BBox(-87.9013,41.781,-87.527,41.9449)        
+//      }
+//      case "indy" => {
+//        BBox(-86.3416,39.6723,-86.0126,39.9398)
+//      }
+//    }
+//    
+//    val in_path = args(1)
+//    val out_path = args(1)+".filtered."+args(0)
+//    val out = new PrintWriter(new File(out_path), "UTF-8")
+//    
+//    
+//    // [tweet_id], [created_at], [geo_lat], [geo_long], [user_id], [tweet_text]
+//    val tweets = Source.fromFile(in_path,"UTF8").getLines()
+//    
+//    tweets.foreach { line => {
+//      val tarr = line.split(",")
+//      if (tarr.length == 6){
+//        if (bbox.contains(tarr(2).toDouble, tarr(3).toDouble)) out.println(line)
+//      }      
+//    } }
+    
+    // test status update
+    val cons = System.console()
+    val sb = new StringBuilder()
+    for(i <- 0 to 1000){
+      sb.clear()
+      val stri = ""+i
+      for (j <- 1 to stri.length()) sb.append("\u0008")
+      sb.append(stri)
+      cons.printf("%s",sb.toString())
+      Thread.sleep(300)
     }
-    
-    val in_path = args(1)
-    val out_path = args(1)+".filtered."+args(0)
-    val out = new PrintWriter(new File(out_path), "UTF-8")
-    
-    
-    // [tweet_id], [created_at], [geo_lat], [geo_long], [user_id], [tweet_text]
-    val tweets = Source.fromFile(in_path,"UTF8").getLines()
-    
-    tweets.foreach { line => {
-      val tarr = line.split(",")
-      if (tarr.length == 6){
-        if (bbox.contains(tarr(2).toDouble, tarr(3).toDouble)) out.println(line)
-      }      
-    } }
     
   }
 

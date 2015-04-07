@@ -78,3 +78,34 @@ import NodeFormat._
   }
 
 }
+
+object OSMGPXProcessor {
+  
+  def main(args:Array[String]) : Unit = {
+     val in_path = args(0)
+     val out_path = args(0)+".out"
+     
+     val public = new File(in_path+"/public")
+     
+     val gpxfiles = public.listFiles().filter { _.isDirectory() }.flatMap { _.listFiles().filter { _.isDirectory() }.flatMap { _.listFiles() } }
+     
+     gpxfiles.foreach { f => {
+         val osm = XML.loadFile(f)
+//         val out = new PrintWriter(new File(out_path))
+         val nodes = (osm \\ "trkpt").foreach { t => {
+           val lng = t.attribute("lon").get.head.toString()
+           val lat = t.attribute("lat").get.head.toString()
+           println(Array(lat,lng).mkString(","))
+         } }
+
+     } }     
+     
+
+     
+//     val osm = XML.loadFile(in_path)
+//     val out = new PrintWriter(new File(out_path))
+//     val nodes = (osm \\ "node")
+    
+  }
+  
+}
