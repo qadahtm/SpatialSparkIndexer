@@ -54,7 +54,9 @@ libraryDependencies ++= Seq(
     //"org.geotools" % "gt-xml" %"12.2",
     //"org.geotools" % "gt-geojson" % "12.2",
   "com.google.protobuf" % "protobuf-java" % "2.6.0",
-  "org.apache.spark" %% "spark-core" % "1.2.1" %  "provided",
+  //"org.apache.spark" %% "spark-core" % "1.2.1" %  "provided",
+  "org.apache.commons" % "commons-math3" % "3.5",
+  "org.apache.spark" %% "spark-core" % "1.0.0" %  "provided",
   "joda-time"		    % "joda-time" 		% "latest.integration",
   "org.joda" 			% "joda-convert" 	% "latest.integration",
   "log4j" % "log4j" % "1.2.14"
